@@ -1,28 +1,41 @@
 #!/bin/bash
+set -euo pipefail
 
-# Set wallpaper
-WALL=$(find ~/wallpapers -type f | shuf -n1)
+# Pick a random wallpaper
+WALL=$(find ~/dotfiles/wallpapers -type f | shuf -n1)
 
-# Start swww if not already running
-pgrep -x swww-daemon > /dev/null || swww-daemon &
+# Start swww daemon if not already running
+if ! pgrep -x swww-daemon > /dev/null; then
+  echo "Starting swww..."
+  swww-daemon &
+  sleep 1.5  # Give it time to initialize
+fi
 
-# Give swww a sec to initialize (first run)
-sleep 1
-
-# Set the wallpaper using swww (with a smooth transition)
+# Set the wallpaper with transition
+echo "Setting wallpaper: $WALL"
 swww img "$WALL" --transition-type any --transition-fps 60 --transition-duration 0.7
 
-# Generate theme with wal
+# Generate color scheme using pywal
+echo "Generating theme with pywal..."
 wal -i "$WALL"
 
-# Wait for wal to finish generating files
-sleep 1
+# Wait to ensure colors are generated
+sleep 0.5
 
-# Copy wal-generated CSS to Waybar config
-cp ~/.cache/wal/colors.css ~/.config/eww/colors.css
+# Update Waybar color scheme (adjust this path if needed)
+if [[ -f ~/.cache/wal/colors.css ]]; then
+  cp ~/.cache/wal/colors.css ~/.config/waybar/colors.css
+else
+  echo "❌ pywal did not generate colors.css"
+fi
 
 # Reload Waybar
-pkill waybar && sleep 0.8 && waybar &
+echo "Reloading Waybar..."
+pkill -x waybar || true
+sleep 0.5
+waybar &
 
-# (Optional) Sync to Firefox if you have pywalfox set up
-pywalfox update
+# Optional: Sync with Firefox (if using pywalfox)
+if command -v pywalfox &> /dev/null; then
+  pywalfox update
+fi
